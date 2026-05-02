@@ -1,13 +1,13 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "db/client";
-import { UserSchema } from "../schemas/auth.schema";
+import { UserSignInSchema, UserSignUpSchema } from "@repo/common/schema";
 import { failure, successFunc } from "../helperFunction";
 import { generateJwtToken } from "../utils/generate-jwt-token.utils";
 
 export async function signupUser(req: Request, res: Response) {
   try {
-    const parsed = UserSchema.safeParse(req.body);
+    const parsed = UserSignUpSchema.safeParse(req.body);
 
     if (!parsed.success) {
       return res
@@ -57,7 +57,7 @@ export async function signupUser(req: Request, res: Response) {
 
 export async function signInUser(req: Request, res: Response) {
   try {
-    const parsed = UserSchema.safeParse(req.body);
+    const parsed = UserSignInSchema.safeParse(req.body);
 
     if (!parsed.success) {
       return res

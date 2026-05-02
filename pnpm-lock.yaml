@@ -20,18 +20,6 @@ importers:
 
   apps/http-backend:
     dependencies:
-      '@repo/typescript-config':
-        specifier: workspace:*
-        version: link:../../packages/typescript-config
-      '@types/bcrypt':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@types/express':
-        specifier: ^5.0.6
-        version: 5.0.6
-      '@types/jsonwebtoken':
-        specifier: ^9.0.10
-        version: 9.0.10
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
@@ -44,9 +32,25 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
-      zod:
-        specifier: ^4.4.2
-        version: 4.4.2
+    devDependencies:
+      '@repo/backend-common':
+        specifier: workspace:*
+        version: link:../../packages/backend-common
+      '@repo/common':
+        specifier: workspace:*
+        version: link:../../packages/common
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/bcrypt':
+        specifier: ^6.0.0
+        version: 6.0.0
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
 
   apps/web:
     dependencies:
@@ -87,6 +91,19 @@ importers:
 
   apps/ws-backend:
     dependencies:
+      jsonwebtoken:
+        specifier: ^9.0.3
+        version: 9.0.3
+      ws:
+        specifier: ^8.20.0
+        version: 8.20.0
+    devDependencies:
+      '@repo/backend-common':
+        specifier: workspace:*
+        version: link:../../packages/backend-common
+      '@repo/common':
+        specifier: workspace:*
+        version: link:../../packages/common
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -96,12 +113,21 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      jsonwebtoken:
-        specifier: ^9.0.3
-        version: 9.0.3
-      ws:
-        specifier: ^8.20.0
-        version: 8.20.0
+
+  packages/backend-common:
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.3
+
+  packages/common:
+    dependencies:
+      zod:
+        specifier: ^4.4.2
+        version: 4.4.2
 
   packages/db:
     dependencies:
