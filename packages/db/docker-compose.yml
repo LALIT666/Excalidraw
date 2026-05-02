@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sketchify-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sketchify_user
+      POSTGRES_PASSWORD: sketchify_mypassword
+      POSTGRES_DB: sketchify_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - sketchify_pgdata:/var/lib/postgresql/data
+
+volumes:
+  sketchify_pgdata:

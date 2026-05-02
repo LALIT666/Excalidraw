@@ -1,0 +1,19 @@
+{
+  "name": "db",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "exports": {
+    "./client": "./index.ts"
+  },
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "6.3.1",
+    "@types/dotenv": "^8.2.3",
+    "dotenv": "^17.4.2",
+    "prisma": "6.3.1"
+  }
+}
