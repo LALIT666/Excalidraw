@@ -15,13 +15,50 @@ datasource db {
 
 
 model User {
-  id            String  @default(uuid())
+  id            String  @id   @default(uuid())
   username      String
   email         String  @unique
   hashPassword  String
+  avatar        String
+
+  rooms         Room[]
+  chats         Chat[]
 
 
   @@map("users")
+
+
+}
+
+
+model Room {
+  id            Int       @id @default(autoincrement())
+  slug          String    @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  adminId       String
+  chats         Chat[]
+
+  admin User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+
+@@map("rooms")
+}
+
+model Chat {
+
+  id        Int     @id  @default(autoincrement())
+  message   String
+
+  roomId    Int
+  userId    String
+
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room      Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+
+  @@map("chats")
 
 
 }
