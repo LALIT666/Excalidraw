@@ -25,7 +25,7 @@ export async function signupUser(req: Request, res: Response) {
       return res.status(409).json(failure("User already exists"));
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const newUser = await prisma.user.create({
       data: {
