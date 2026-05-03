@@ -19,13 +19,13 @@ model User {
   username      String
   email         String  @unique
   hashPassword  String
-  avatar        String
+  avatar        String?
 
   rooms         Room[]
   chats         Chat[]
 
-
-  @@map("users")
+ 
+  @@map("users") 
 
 
 }

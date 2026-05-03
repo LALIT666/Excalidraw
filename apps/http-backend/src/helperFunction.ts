@@ -11,3 +11,10 @@ export function successFunc(message: any) {
     message,
   };
 }
+
+export function serverError() {
+  return {
+    success: false,
+    message: "Internal Server Error",
+  };
+}

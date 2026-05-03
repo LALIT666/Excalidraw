@@ -32,11 +32,13 @@ export async function signupUser(req: Request, res: Response) {
         email,
         username,
         hashPassword: hashedPassword,
+        avatar: "",
       },
       select: {
         id: true,
         email: true,
         username: true,
+        avatar: true,
       },
     });
 
