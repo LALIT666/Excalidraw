@@ -5,6 +5,8 @@ import { prisma } from "db/client";
 
 const wss = new WebSocketServer({ port: 8080 });
 
+//Websocket server is not stateless like http server
+
 interface User {
   ws: WebSocket;
   rooms: string[];
