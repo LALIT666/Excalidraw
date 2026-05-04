@@ -1,105 +1,106 @@
-import { WebSocketServer, WebSocket } from "ws";
-
-import jwt from "jsonwebtoken";
+import { WebSocket, WebSocketServer } from "ws";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from "@repo/backend-common/config";
-
-declare module "ws" {
-  interface WebSocket {
-    userId?: string;
-  }
-}
+import { prisma } from "db/client";
 
 const wss = new WebSocketServer({ port: 8080 });
 
-const roomRegister = new Map<string, Set<WebSocket>>();
+interface User {
+  ws: WebSocket;
+  rooms: string[];
+  userId: string;
+}
 
-wss.on("connection", function connection(ws: WebSocket, request) {
-  const usersUrl = request.url;
+const users: User[] = [];
 
-  if (!usersUrl) {
-    ws.close();
-    return;
-  }
-
-  const queryParams = new URLSearchParams(usersUrl.split("?")[1]);
-  const token = queryParams.get("token") || "";
-
+function checkUser(token: string): string | null {
   try {
-    const decode = jwt.verify(token, JWT_SECRET) as { userId?: string };
+    const decoded = jwt.verify(token, JWT_SECRET);
 
-    if (typeof decode === "string" || !decode || !decode.userId) {
-      ws.close();
-      return;
+    if (typeof decoded == "string") {
+      return null;
     }
 
-    ws.userId = decode.userId;
-  } catch (error) {
-    console.error("Error decoding JWT in ws-backend:", error);
-    ws.close();
+    if (!decoded || !decoded.userId) {
+      return null;
+    }
+
+    return decoded.userId;
+  } catch (e) {
+    return null;
+  }
+}
+
+wss.on("connection", function connection(ws, request) {
+  const url = request.url;
+  if (!url) {
     return;
   }
+  const queryParams = new URLSearchParams(url.split("?")[1]);
+  console.log({ queryParams });
+  const token = queryParams.get("token") || "";
+  console.log({ token });
+  const userId = checkUser(token);
+  console.log({ userId });
 
-  ws.on("message", function message(data) {
-    let parseData;
+  if (userId == null) {
+    ws.close();
+    return null;
+  }
 
-    try {
-      parseData = JSON.parse(data.toString());
-    } catch (error) {
-      ws.send(JSON.stringify({ type: "error", message: "Invalid JSON" }));
-      return;
-    }
-
-    if (parseData.type === "join_room") {
-      const { roomId } = parseData;
-      if (!roomId) return;
-
-      if (!roomRegister.has(roomId)) {
-        roomRegister.set(roomId, new Set());
-      }
-
-      roomRegister.get(roomId)!.add(ws);
-      ws.send(JSON.stringify({ type: "room_joined", roomId }));
-    } else if (parseData.type === "chat") {
-      const { roomId, message } = parseData;
-      if (!roomId || !message) return;
-
-      const room = roomRegister.get(roomId);
-      if (!room) return;
-
-      const payload = JSON.stringify({
-        type: "chat",
-        message: message,
-        userId: ws.userId,
-      });
-
-      // Broadcast to everyone in the room EXCEPT the sender
-      for (const client of room) {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(payload);
-        }
-      }
-    } else if (parseData.type === "ping") {
-      ws.send(JSON.stringify({ type: "pong" }));
-    } else {
-      ws.send(
-        JSON.stringify({ type: "error", message: "Unknown message type" }),
-      );
-    }
+  users.push({
+    userId,
+    rooms: [],
+    ws,
   });
 
-  ws.on("close", function close() {
-    console.log(`Connection closed for user: ${ws.userId}`);
+  ws.on("message", async function message(data) {
+    let parsedData;
+    if (typeof data !== "string") {
+      parsedData = JSON.parse(data.toString());
+    } else {
+      parsedData = JSON.parse(data); // {type: "join-room", roomId: 1}
+    }
+    console.log(parsedData);
+    console.log({ parsedData });
 
-    // Clean up: remove user from all rooms
-    roomRegister.forEach((clients, roomId) => {
-      if (clients.has(ws)) {
-        clients.delete(ws);
+    if (parsedData.type === "join_room") {
+      const user = users.find((x) => x.ws === ws);
+      user?.rooms.push(parsedData.roomId);
+    }
 
-        // If the room is now empty, delete the room from the Map to save memory
-        if (clients.size === 0) {
-          roomRegister.delete(roomId);
-        }
+    if (parsedData.type === "leave_room") {
+      const user = users.find((x) => x.ws === ws);
+      if (!user) {
+        return;
       }
-    });
+      user.rooms = user?.rooms.filter((x) => x !== parsedData.room);
+    }
+
+    if (parsedData.type === "chat") {
+      const roomId = parsedData.roomId;
+      const message = parsedData.message;
+
+      //dumb aproach
+      await prisma.chat.create({
+        data: {
+          roomId: Number(roomId),
+          message,
+          userId,
+        },
+      });
+
+      users.forEach((user) => {
+        if (user.rooms.includes(roomId)) {
+          user.ws.send(
+            JSON.stringify({
+              type: "chat",
+              message: message,
+              roomId,
+            }),
+          );
+        }
+      });
+    }
   });
 });
