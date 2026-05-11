@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "db/client";
 import { UserSignInSchema, UserSignUpSchema } from "@repo/common/schema";
-import { failure, successFunc } from "../helperFunction";
 import { generateJwtToken } from "../utils/generate-jwt-token.utils";
 
 export async function signupUser(req: Request, res: Response) {
@@ -10,9 +9,10 @@ export async function signupUser(req: Request, res: Response) {
     const parsed = UserSignUpSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json(failure(JSON.stringify(parsed.error.flatten().fieldErrors)));
+      return res.status(400).json({
+        success: false,
+        message: parsed.error.flatten().fieldErrors,
+      });
     }
 
     const { email, password, username } = parsed.data;
@@ -22,7 +22,10 @@ export async function signupUser(req: Request, res: Response) {
     });
 
     if (existingUser) {
-      return res.status(409).json(failure("User already exists"));
+      return res.status(409).json({
+        success: false,
+        message: "User already exists",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -42,18 +45,20 @@ export async function signupUser(req: Request, res: Response) {
       },
     });
 
-    const token = generateJwtToken(newUser.id, res);
+    const token = generateJwtToken(newUser.id);
 
-    return res.status(201).json(
-      successFunc({
-        message: "User created successfully",
-        user: newUser,
-        token,
-      }),
-    );
+    return res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      user: newUser,
+      token,
+    });
   } catch (error) {
     console.error("signupUser error:", error);
-    return res.status(500).json(failure("Server Error"));
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 }
 
@@ -62,9 +67,10 @@ export async function signInUser(req: Request, res: Response) {
     const parsed = UserSignInSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res
-        .status(400)
-        .json(failure(JSON.stringify(parsed.error.flatten().fieldErrors)));
+      return res.status(400).json({
+        success: false,
+        message: parsed.error.flatten().fieldErrors,
+      });
     }
 
     const { email, password } = parsed.data;
@@ -74,25 +80,33 @@ export async function signInUser(req: Request, res: Response) {
     });
 
     if (!user) {
-      return res.status(404).json(failure("User not found"));
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.hashPassword);
 
     if (!isPasswordValid) {
-      return res.status(401).json(failure("Incorrect password"));
+      return res.status(401).json({
+        success: false,
+        message: "Incorrect password",
+      });
     }
 
-    const token = generateJwtToken(user.id, res);
+    const token = generateJwtToken(user.id);
 
-    return res.status(200).json(
-      successFunc({
-        message: "Logged in successfully",
-        token,
-      }),
-    );
+    return res.status(200).json({
+      success: true,
+      message: "Logged in successfully",
+      token,
+    });
   } catch (error) {
     console.error("signInUser error:", error);
-    return res.status(500).json(failure("Server Error"));
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 }

@@ -5,10 +5,10 @@ export function failure(message: string) {
   };
 }
 
-export function successFunc(message: any) {
+export function successFunc(data: any) {
   return {
     success: true,
-    message,
+    data,
   };
 }
 

@@ -2,11 +2,18 @@ import express from "express";
 import authRouter from "./routes/auth.routes";
 import { verifyToken } from "./middleware/verifyToken.middleware";
 import roomRouter from "./routes/room.routes";
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  }),
+);
 
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({ message: "Server  is healthy" });

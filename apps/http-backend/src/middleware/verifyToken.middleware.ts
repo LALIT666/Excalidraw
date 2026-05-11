@@ -1,32 +1,41 @@
-import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { failure } from "../helperFunction";
-
+import { Request, Response, NextFunction } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { JWT_SECRET } from "@repo/backend-common/config";
 
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined in env");
+export interface AuthRequest extends Request {
+  userId?: string;
 }
 
-export function verifyToken(req: Request, res: Response, next: NextFunction) {
+export function verifyToken(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ success: false, message: "No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  if (!token) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid token format" });
+  }
+
+  if (!JWT_SECRET) {
+    throw new Error("JWT_SECRET not defined");
+  }
+
   try {
-    const token = req.cookies?.token;
-
-    if (!token) {
-      return res.status(401).json(failure("Unauthorized: No token found"));
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    if (typeof decoded === "string") {
-      return res.status(401).json(failure("Invalid token"));
-    }
-
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     req.userId = decoded.userId;
-
     next();
-  } catch (error) {
-    console.error("verifyToken error:", error);
-    return res.status(401).json(failure("Invalid or expired token"));
+  } catch {
+    return res.status(401).json({ success: false, message: "Invalid token" });
   }
 }

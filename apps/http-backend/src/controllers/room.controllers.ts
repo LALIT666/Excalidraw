@@ -33,11 +33,11 @@ export async function createRoom(req: Request, res: Response) {
       },
     });
 
-    return res
-      .status(201)
-      .json(
-        successFunc(`room created successfully with roomId: ${newRoom.id}`),
-      );
+    return res.status(201).json(
+      successFunc({
+        roomId: newRoom.id,
+      }),
+    );
   } catch (error: any) {
     if (error.code === "P2002") {
       //ye error prisma error hai hum pakka kahae sakatae hai ki yaha par room exist karta hai
@@ -66,7 +66,7 @@ export async function getMessages(req: Request, res: Response) {
     });
 
     if (!roomExists) {
-      res.status(404).json(failure("Room does not exists"));
+      return res.status(404).json(failure("Room does not exists"));
     }
 
     const messages = await prisma.chat.findMany({
