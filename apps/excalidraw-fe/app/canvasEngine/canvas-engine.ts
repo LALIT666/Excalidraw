@@ -9,6 +9,7 @@ type Coordinate = {
 type Shape =
   | {
       type: "rect";
+      id: string;
       x: number;
       y: number;
       width: number;
@@ -16,12 +17,14 @@ type Shape =
     }
   | {
       type: "circle";
+      id: string;
       centerX: number;
       centerY: number;
       radius: number;
     }
   | {
       type: "diamond";
+      id: string;
       x: number;
       y: number;
       width: number;
@@ -30,13 +33,23 @@ type Shape =
   | {
       type: "eraser";
       points: Coordinate[];
+    }
+  | {
+      type: "pencil";
+      id: string;
+      points: Coordinate[];
+    }
+  | {
+      type: "objEraser";
     };
 
 export async function canvasEngine(
   canvas: HTMLCanvasElement,
   roomId: string,
   socket: WebSocket,
-  toolRef: { current: "rect" | "circle" | "diamond" | "eraser" },
+  toolRef: {
+    current: "rect" | "circle" | "diamond" | "eraser" | "pencil" | "objEraser";
+  },
 ) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -73,7 +86,7 @@ export async function canvasEngine(
     startX = e.clientX - rect.left;
     startY = e.clientY - rect.top;
 
-    if (toolRef.current === "eraser") {
+    if (toolRef.current === "eraser" || toolRef.current === "pencil") {
       currentPath = [];
       currentPath.push({ x: startX, y: startY });
     }
@@ -92,6 +105,7 @@ export async function canvasEngine(
     if (toolRef.current === "rect") {
       shape = {
         type: "rect",
+        id: crypto.randomUUID(),
         x: startX,
         y: startY,
         width: currentX - startX,
@@ -100,6 +114,7 @@ export async function canvasEngine(
     } else if (toolRef.current === "circle") {
       shape = {
         type: "circle",
+        id: crypto.randomUUID(),
         centerX: startX,
         centerY: startY,
         radius: Math.abs(currentX - startX),
@@ -107,6 +122,7 @@ export async function canvasEngine(
     } else if (toolRef.current === "diamond") {
       shape = {
         type: "diamond",
+        id: crypto.randomUUID(),
         x: startX,
         y: startY,
         width: currentX - startX,
@@ -118,8 +134,67 @@ export async function canvasEngine(
         points: [...currentPath],
       };
       currentPath = [];
-    }
+    } else if (toolRef.current === "pencil") {
+      shape = {
+        type: "pencil",
+        id: crypto.randomUUID(),
+        points: [...currentPath],
+      };
+    } else if (toolRef.current === "objEraser") {
+      let shapeIndexToDelete = -1;
 
+      for (let i = existingShape.length - 1; i >= 0; i--) {
+        const shape = existingShape[i];
+
+        if (shape.type === "rect") {
+          const isInside = isPointInRect(
+            currentX,
+            currentY,
+            shape.x,
+            shape.y,
+            shape.width,
+            shape.height,
+          );
+
+          if (isInside) {
+            shapeIndexToDelete = i;
+            break;
+          }
+        } else if (shape.type === "circle") {
+          const isInside = isPointInCircle(
+            currentX,
+            currentY,
+            shape.centerX,
+            shape.centerY,
+            shape.radius,
+          );
+
+          if (isInside) {
+            shapeIndexToDelete = i;
+            break;
+          }
+        } else if (shape.type === "diamond") {
+          const isInside = isPointInDiamond(
+            currentX,
+            currentY,
+            shape.x,
+            shape.y,
+            shape.width + shape.x / 2,
+          );
+
+          if (isInside) {
+            shapeIndexToDelete = i;
+            break;
+          }
+        }
+      }
+
+      if (shapeIndexToDelete !== -1) {
+        existingShape.splice(shapeIndexToDelete, 1);
+      }
+
+      clearCanvas(existingShape, canvas, ctx);
+    }
     if (shape) {
       existingShape.push(shape);
 
@@ -154,10 +229,30 @@ export async function canvasEngine(
 
         ctx.beginPath();
         ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
 
         ctx.stroke();
       } else if (toolRef.current === "diamond") {
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
         drawDiamond(ctx, startX, startY, currentX - startX, currentY - startY);
+      } else if (toolRef.current === "pencil") {
+        currentPath.push({ x: currentX, y: currentY });
+
+        ctx.beginPath();
+        ctx.moveTo(currentPath[0].x, currentPath[0].y);
+
+        for (let i = 1; i < currentPath.length; i++) {
+          ctx.lineTo(currentPath[i].x, currentPath[i].y);
+        }
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+
+        ctx.stroke();
       } else if (toolRef.current === "eraser") {
         currentPath.push({ x: currentX, y: currentY });
 
@@ -167,11 +262,54 @@ export async function canvasEngine(
         for (let i = 1; i < currentPath.length; i++) {
           ctx.lineTo(currentPath[i].x, currentPath[i].y);
         }
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 15;
 
         ctx.stroke();
       }
     }
   });
+}
+
+function isPointInRect(
+  px: number,
+  py: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): boolean {
+  return (
+    px >= x && // Point is right of the left edge
+    px <= x + w && // Point is left of the right edge
+    py >= y && // Point is below the top edge
+    py <= y + h // Point is above the bottom edge
+  );
+}
+
+function isPointInCircle(
+  mouseX: number,
+  mouseY: number,
+  circleCenterX: number,
+  circleCenterY: number,
+  radius: number,
+): boolean {
+  const dx = mouseX - circleCenterX;
+  const dy = mouseY - circleCenterY;
+  return dx * dx + dy * dy <= radius * radius;
+}
+
+function isPointInDiamond(
+  mouseX: number,
+  mouseY: number,
+  diamondCenterX: number,
+  diamondCenterY: number,
+  size: number,
+): boolean {
+  return (
+    Math.abs(mouseX - diamondCenterX) + Math.abs(mouseY - diamondCenterY) <=
+    size
+  );
 }
 
 function drawDiamond(
@@ -222,18 +360,33 @@ function clearCanvas(
       drawDiamond(ctx, shape.x, shape.y, shape.width, shape.height);
     } else if (shape.type === "eraser") {
       if (shape.points.length > 0) {
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 15;
+        ctx.beginPath();
+
+        ctx.moveTo(shape.points[0].x, shape.points[0].y);
+
+        for (let i = 0; i < shape.points.length; i++)
+          ctx.lineTo(shape.points[i].x, shape.points[i].y);
+
+        ctx.stroke();
+      } else {
         return;
       }
-      ctx.strokeStyle = "black";
-      ctx.lineWidth = 15;
-      ctx.beginPath();
+    } else if (shape.type === "pencil") {
+      if (shape.points.length > 0) {
+        ctx.beginPath();
 
-      ctx.moveTo(shape.points[0].x, shape.points[0].y);
+        ctx.moveTo(shape.points[0].x, shape.points[0].y);
 
-      for (let i = 0; i < shape.points.length; i++)
-        ctx.lineTo(shape.points[i].x, shape.points[i].y);
-
-      ctx.stroke();
+        for (let i = 0; i < shape.points.length; i++)
+          ctx.lineTo(shape.points[i].x, shape.points[i].y);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        return;
+      }
     }
   });
 }
