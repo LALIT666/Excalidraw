@@ -16,6 +16,7 @@ export default function Canvas({
 
   const toolRef = useRef(currentTool);
 
+  // Jab bhi tool change ho, ref update karo
   useEffect(() => {
     toolRef.current = currentTool;
   }, [currentTool]);
@@ -33,29 +34,42 @@ export default function Canvas({
     window.addEventListener("resize", resize);
     canvasEngine(canvas, roomId, socket, toolRef);
 
-    return () => window.removeEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+    };
   }, [roomId, socket]);
+
+  // Tool buttons ka config
+  const tools = [
+    { name: "rect", label: "▭ Rect" },
+    { name: "circle", label: "○ Circle" },
+    { name: "diamond", label: "◇ Diamond" },
+    { name: "pencil", label: "✏️ Pencil" },
+    { name: "eraser", label: "🧹 Eraser" },
+    { name: "objEraser", label: "🗑️ Delete" },
+  ];
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 border border-neutral-700 p-2 rounded-xl flex gap-3 shadow-2xl">
-        {["rect", "circle", "diamond", "eraser", "pencil", "objEraser"].map(
-          (tool) => (
-            <button
-              key={tool}
-              onClick={() => setCurrentTool(tool as any)}
-              className={`px-4 py-2 rounded-lg capitalize transition-all ${
-                currentTool === tool
-                  ? "bg-white text-black font-bold"
-                  : "bg-transparent text-white hover:bg-neutral-800"
-              }`}
-            >
-              {tool}
-            </button>
-          ),
-        )}
+      {/* TOOLBAR */}
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 border border-neutral-700 p-2 rounded-xl flex gap-2 shadow-2xl">
+        {tools.map((tool) => (
+          <button
+            key={tool.name}
+            onClick={() => setCurrentTool(tool.name as any)}
+            className={`px-4 py-2 rounded-lg text-sm transition-all ${
+              currentTool === tool.name
+                ? "bg-white text-black font-bold"
+                : "bg-transparent text-white hover:bg-neutral-800"
+            }`}
+          >
+            {tool.label}
+          </button>
+        ))}
       </div>
-      <canvas ref={canvasRef} className="block touch-none"></canvas>
+
+      {/* CANVAS */}
+      <canvas ref={canvasRef} className="block touch-none" />
     </div>
   );
 }
